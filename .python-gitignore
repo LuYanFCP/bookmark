@@ -20,6 +20,8 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -142,19 +144,11 @@ data/
 *.db
 *.sqlite
 .sentryclirc
-.bot_session
-.token
 
 # uv
 uv.lock
 .venv/
 
 # Bot specific
-*.session
-*.session-journal
+.bot_session
 .telegram_token
-
-# Temporary files
-tmp/
-temp/
-*.tmp

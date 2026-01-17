@@ -61,7 +61,9 @@ pip install -r requirements.txt
 
 ### 3. Configuration
 
-Create a `.env` file:
+#### Create .env File
+
+Create a `.env` file with your configuration:
 
 ```env
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
@@ -71,10 +73,18 @@ NOTION_DATABASE_ID=your_notion_database_id_here
 OBSIDIAN_VAULT_PATH=/path/to/your/vault
 ```
 
-Use the setup wizard:
+Or use the interactive setup wizard:
 
 ```bash
 python run.py --setup
+```
+
+#### Validate Configuration
+
+Check if your configuration is valid:
+
+```bash
+python run.py --check
 ```
 
 ### 4. Run the Bot
@@ -125,6 +135,27 @@ docker-compose logs -f bot
 - `FEATURE_AUTO_SUMMARIZE`: Enable auto-summarization (default: true)
 - `FEATURE_AUTO_CLASSIFY`: Enable auto-classification (default: true)
 - `FEATURE_OCR_ENABLED`: Enable OCR for images (default: true)
+
+#### Logging
+- `LOG_LEVEL`: Log level with options (`DEBUG`, `INFO`, `WARNING`, `ERROR`). Default: `INFO`
+  - `DEBUG`: Detailed debug information (use for development)
+  - `INFO`: Important business events (default, recommended for production)
+  - `WARNING`: Warning messages only
+  - `ERROR`: Error messages only
+  
+**Note:** Logs are output to console only in structured **logfmt** format.
+
+**Example:**
+```bash
+# Development mode with detailed logs
+LOG_LEVEL=DEBUG python run.py
+
+# Production mode with standard logs
+LOG_LEVEL=INFO python run.py
+
+# View all available configuration parameters
+python run.py --show-config
+```
 
 ## Usage with Make and uv
 

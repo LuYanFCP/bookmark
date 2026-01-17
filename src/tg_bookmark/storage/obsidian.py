@@ -7,7 +7,8 @@ from typing import Any, Dict, Optional
 import frontmatter
 
 from .base import BaseStorage
-from ..config import get_settings
+from tg_bookmark.config import get_settings
+from tg_bookmark.utils.logging import debug, info, warning, error
 
 logger = logging.getLogger(__name__)
 
@@ -31,25 +32,46 @@ class ObsidianStorage(BaseStorage):
     
     async def save_message(self, data: Dict[str, Any]) -> str:
         """Save message as Obsidian markdown file."""
+        user_id = data.get("user_id")
+        message_id = data.get("message_id")
+        category = data.get("category", "Unknown")
+        
+        debug(logger, event="obsidian_save_start", user_id=user_id, message_id=message_id, category=category, vault_path=self.vault_path)
+        
         try:
             # Generate file path
+            debug(logger, event="generating_file_path", message_id=message_id)
             file_path = self._generate_file_path(data)
+            debug(logger, event="file_path_generated", message_id=message_id, file_path=file_path)
             
             # Ensure directory exists
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            dir_path = os.path.dirname(file_path)
+            debug(logger, event="creating_directory", directory=dir_path)
+            os.makedirs(dir_path, exist_ok=True)
+            debug(logger, event="directory_ready", directory=dir_path)
             
             # Build frontmatter and content
+            debug(logger, event="building_file_content", message_id=message_id)
             file_content = self._build_file_content(data)
+            debug(logger, event="file_content_built", message_id=message_id, content_length=len(file_content))
             
             # Write file
+            debug(logger, event="writing_file", message_id=message_id, file_path=file_path)
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(file_content)
             
-            logger.info(f"Successfully saved message to Obsidian: {file_path}")
+            # Verify file was written
+            if os.path.exists(file_path):
+                file_size = os.path.getsize(file_path)
+                info(logger, event="obsidian_save_success", user_id=user_id, message_id=message_id, file_path=file_path, file_size=file_size, category=category)
+            else:
+                error(logger, event="obsidian_file_not_found_after_write", user_id=user_id, message_id=message_id, file_path=file_path)
+                raise FileNotFoundError(f"File not found after writing: {file_path}")
+            
             return file_path
             
         except Exception as e:
-            logger.error(f"Error saving to Obsidian: {e}", exc_info=True)
+            error(logger, event="obsidian_save_failed", user_id=user_id, message_id=message_id, error=str(e))
             raise
     
     def _generate_file_path(self, data: Dict[str, Any]) -> str:

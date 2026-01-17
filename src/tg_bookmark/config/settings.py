@@ -11,12 +11,19 @@ class AIConfig(BaseSettings):
     """AI provider configuration."""
 
     provider: str = Field(default="openai", validation_alias="AI_PROVIDER")
+    
+    # OpenAI LLM settings
     openai_endpoint: str | None = Field(default=None, validation_alias="OPENAI_ENDPOINT")
     openai_api_key: str | None = Field(default=None, validation_alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4o-mini", validation_alias="openai_model")
+    
+    # OpenAI Embedding settings (separate provider)
+    openai_embedding_endpoint: str | None = Field(default=None, validation_alias="OPENAI_EMBEDDING_ENDPOINT")
+    openai_embedding_api_key: str | None = Field(default=None, validation_alias="OPENAI_EMBEDDING_API_KEY")
     openai_embedding_model: str = Field(
         default="text-embedding-3-small", validation_alias="OPENAI_EMBEDDING_MODEL"
     )
+    
     anthropic_api_key: Optional[str] = Field(default=None, validation_alias="ANTHROPIC_API_KEY")
     anthropic_model: str = Field(
         default="claude-3-haiku-20240307", validation_alias="ANTHROPIC_MODEL"
@@ -108,7 +115,7 @@ class LoggingConfig(BaseSettings):
 
     level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
     format: str = Field(default="json", validation_alias="LOG_FORMAT")
-    sentry_dsn: Optional[str] = Field(default=None, validation_alias="SENTRY_DSN")
+    # Removed: Sentry DSN configuration (no longer supported)
 
 
 class Settings(BaseSettings):

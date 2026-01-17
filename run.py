@@ -6,6 +6,24 @@ This bot processes Telegram messages with AI-powered summarization,
 classification, and stores them in Notion/Obsidian.
 
 Uses uv for fast Python package management: https://github.com/astral-sh/uv
+
+Usage examples:
+    # Show all configuration parameters
+
+    # Setup wizard
+    python run.py --setup
+
+    # Check configuration
+    python run.py --check
+
+    # Run with debug logging
+    LOG_LEVEL=DEBUG python run.py
+
+    # Run with custom .env file
+    python run.py --env-file .env.production
+
+    # Webhook mode
+    python run.py --mode webhook --host 0.0.0.0 --port 8443
 """
 
 import argparse
@@ -18,6 +36,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from tg_bookmark.telegram_bot import KnowledgeBot
 from tg_bookmark.config import get_settings
+from tg_bookmark.__main__ import setup_logging
 
 
 def check_uv():
@@ -90,6 +109,8 @@ def parse_args():
         "--check",
         action="store_true",
         help="Check configuration and dependencies"
+    )
+
     )
 
     return parser.parse_args()
@@ -269,8 +290,13 @@ def main():
     """Main entry point."""
     args = parse_args()
 
+    # Setup logging first
+    setup_logging()
+
     # Handle uv installation check
     check_uv()
+
+
 
     # Handle installation
     if args.install:

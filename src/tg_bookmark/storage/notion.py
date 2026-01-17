@@ -6,7 +6,8 @@ from notion_client import AsyncClient
 from notion_client.errors import APIResponseError
 
 from .base import BaseStorage
-from ..config import get_settings
+from tg_bookmark.config import get_settings
+from tg_bookmark.utils.logging import debug, info, warning, error
 
 logger = logging.getLogger(__name__)
 
@@ -26,14 +27,23 @@ class NotionStorage(BaseStorage):
     
     async def save_message(self, data: Dict[str, Any]) -> str:
         """Save message to Notion database."""
+        user_id = data.get("user_id")
+        message_id = data.get("message_id")
+        category = data.get("category", "Unknown")
+        
+        debug(logger, event="notion_save_start", user_id=user_id, message_id=message_id, category=category)
+        
         try:
             # Build properties for Notion page
+            debug(logger, event="building_notion_properties", message_id=message_id)
             properties = self._build_properties(data)
             
             # Build content for the page (children blocks)
+            debug(logger, event="building_notion_blocks", message_id=message_id)
             children = self._build_content_blocks(data)
             
             # Create page in database
+            debug(logger, event="creating_notion_page", message_id=message_id, block_count=len(children))
             page = await self.client.pages.create(
                 parent={"database_id": self.database_id},
                 properties=properties,
@@ -41,14 +51,14 @@ class NotionStorage(BaseStorage):
             )
             
             page_id = page["id"]
-            logger.info(f"Successfully saved message to Notion: {page_id}")
+            info(logger, event="notion_save_success", user_id=user_id, message_id=message_id, page_id=page_id, category=category)
             return page_id
             
         except APIResponseError as e:
-            logger.error(f"Notion API error: {e}")
+            error(logger, event="notion_api_error", user_id=user_id, message_id=message_id, error=str(e), status=e.status)
             raise
         except Exception as e:
-            logger.error(f"Error saving to Notion: {e}", exc_info=True)
+            error(logger, event="notion_save_failed", user_id=user_id, message_id=message_id, error=str(e))
             raise
     
     def _build_properties(self, data: Dict[str, Any]) -> Dict[str, Any]:

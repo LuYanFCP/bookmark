@@ -4,88 +4,97 @@ import asyncio
 import logging
 import sys
 from pathlib import Path
+from typing import Any, Dict
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from telegram_bot import KnowledgeBot
 from config import get_settings
+from utils.logging_filter import ProjectLogFilter
+
+
+class LogfmtFormatter(logging.Formatter):
+    """Log formatter that outputs logs in logfmt format."""
+
+    def __init__(self):
+        super().__init__(datefmt='%Y-%m-%dT%H:%M:%S%z')
+
+    def format(self, record: logging.LogRecord) -> str:
+        """Format log record in logfmt style."""
+        # Build the base parts
+        parts = [
+            f'time={self.formatTime(record)}',
+            f'level={record.levelname.lower()}',
+            f'logger={record.name}',
+            f'msg="{str(record.msg).replace("\"", "\\\"")}"' if record.msg else 'msg=""',
+            f'filename={record.filename}',
+            f'line={record.lineno}',
+        ]
+
+        # Add exception info if present
+        if record.exc_info:
+            import traceback
+            exc_text = traceback.format_exception(*record.exc_info)
+            exc_escaped = repr(''.join(exc_text))
+            parts.append(f'error={exc_escaped}')
+
+        return ' '.join(parts)
 
 
 def setup_logging():
-    """Setup application logging."""
+    """Setup application logging with logfmt format to console only."""
     settings = get_settings()
+
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, settings.logging.level.upper()))
+
+    # Remove existing handlers to avoid duplicates
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+
+    # Add console handler with LogfmtFormatter
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(LogfmtFormatter())
     
-    # Configure structlog if available
-    try:
-        import structlog
-        
-        structlog.configure(
-            processors=[
-                structlog.stdlib.filter_by_level,
-                structlog.stdlib.add_logger_name,
-                structlog.stdlib.add_log_level,
-                structlog.stdlib.PositionalArgumentsFormatter(),
-                structlog.processors.TimeStamper(fmt="iso"),
-                structlog.processors.StackInfoRenderer(),
-                structlog.processors.format_exc_info,
-                structlog.processors.UnicodeDecoder(),
-                structlog.processors.JSONRenderer() if settings.logging.format == "json" 
-                else structlog.dev.ConsoleRenderer(),
-            ],
-            context_class=dict,
-            logger_factory=structlog.stdlib.LoggerFactory(),
-            wrapper_class=structlog.stdlib.BoundLogger,
-            cache_logger_on_first_use=True,
-        )
-    except ImportError:
-        # Fallback to standard logging
-        logging.basicConfig(
-            level=getattr(logging, settings.logging.level.upper()),
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+    # Add filter to only show our project's logs
+    console_handler.addFilter(ProjectLogFilter())
     
-    # Configure Sentry if available
-    if settings.logging.sentry_dsn:
-        try:
-            import sentry_sdk
-            sentry_sdk.init(
-                dsn=settings.logging.sentry_dsn,
-                traces_sample_rate=1.0
-            )
-        except ImportError:
-            logging.warning("Sentry SDK not installed")
-        except Exception as e:
-            logging.error(f"Failed to initialize Sentry: {e}")
+    root_logger.addHandler(console_handler)
+
+    # Log initialization using standard logging to ensure it's recorded
+    # After this point, structured logging can be used
+    root_logger.info(f'event="logging_initialized" level="{settings.logging.level}" handler="console" filter="tg_bookmark_only"')
 
 
 def main():
     """Main application entry point."""
     # Load settings
     settings = get_settings()
-    
+
     # Setup logging
     setup_logging()
     logger = logging.getLogger(__name__)
-    
+
     logger.info("Starting Telegram Knowledge Bot")
     logger.info(f"AI Provider: {settings.ai.provider}")
     logger.info(f"Primary Storage: {settings.storage.primary}")
     logger.info(f"Notion Enabled: {settings.storage.notion.is_enabled}")
     logger.info(f"Obsidian Enabled: {settings.storage.obsidian.is_enabled}")
-    
+
     # Validate configuration
     if not settings.telegram.bot_token:
         logger.error("TELEGRAM_BOT_TOKEN is not set!")
         sys.exit(1)
-    
+
     if not settings.ai.openai_api_key and not settings.ai.anthropic_api_key:
         logger.error("No AI API key is set (OPENAI_API_KEY or ANTHROPIC_API_KEY)")
         sys.exit(1)
-    
+
     # Create and run bot
     bot = KnowledgeBot()
-    
+
     try:
         # Run in polling mode (default)
         bot.run(mode="polling")

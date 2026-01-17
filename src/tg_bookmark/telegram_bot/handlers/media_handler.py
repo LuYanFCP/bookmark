@@ -6,8 +6,8 @@ from typing import Any, Dict
 from telegram import Document, Message, PhotoSize, Update
 from telegram.ext import ContextTypes
 
-from ...ai_engine import ContentClassifier, MessageSummarizer
-from ...content_extractor import ContentExtractionPipeline
+from tg_bookmark.ai_engine import ContentClassifier, MessageSummarizer
+from tg_bookmark.content_extractor import ContentExtractionPipeline
 
 logger = logging.getLogger(__name__)
 

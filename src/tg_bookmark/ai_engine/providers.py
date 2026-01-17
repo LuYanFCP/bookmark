@@ -14,18 +14,31 @@ class OpenAIProvider(BaseAIProvider):
 
     def __init__(self):
         settings = get_settings()
+        
+        # LLM client
         if settings.ai.openai_endpoint is None:
-            self.client = AsyncOpenAI(api_key=settings.ai.openai_api_key)
+            self.llm_client = AsyncOpenAI(api_key=settings.ai.openai_api_key)
         else:
-            self.client = AsyncOpenAI(api_key=settings.ai.openai_api_key,
+            self.llm_client = AsyncOpenAI(api_key=settings.ai.openai_api_key,
                 base_url=settings.ai.openai_endpoint
             )
         self.model = settings.ai.openai_model
+        
+        # Embedding client (can be different provider)
+        embedding_api_key = settings.ai.openai_embedding_api_key or settings.ai.openai_api_key
+        embedding_endpoint = settings.ai.openai_embedding_endpoint or settings.ai.openai_endpoint
+        
+        if embedding_endpoint is None:
+            self.embedding_client = AsyncOpenAI(api_key=embedding_api_key)
+        else:
+            self.embedding_client = AsyncOpenAI(api_key=embedding_api_key,
+                base_url=embedding_endpoint
+            )
         self.embedding_model = settings.ai.openai_embedding_model
 
     async def complete(self, prompt: str, **kwargs) -> str:
         """Generate text completion using OpenAI."""
-        response = await self.client.chat.completions.create(
+        response = await self.llm_client.chat.completions.create(
             model=kwargs.get("model", self.model),
             messages=[{"role": "user", "content": prompt}],
             temperature=kwargs.get("temperature", 0.3),
@@ -36,7 +49,7 @@ class OpenAIProvider(BaseAIProvider):
 
     async def generate_embedding(self, text: str, **kwargs) -> List[float]:
         """Generate embedding using OpenAI."""
-        response = await self.client.embeddings.create(
+        response = await self.embedding_client.embeddings.create(
             model=kwargs.get("model", self.embedding_model),
             input=text
         )
@@ -65,7 +78,7 @@ class AnthropicProvider(BaseAIProvider):
         """Generate embedding using Claude (fallback to OpenAI if available)."""
         # Anthropic doesn't provide embeddings yet, fallback to OpenAI
         settings = get_settings()
-        if settings.ai.openai_api_key:
+        if settings.ai.openai_api_key or settings.ai.openai_embedding_api_key:
             openai_provider = OpenAIProvider()
             return await openai_provider.generate_embedding(text, **kwargs)
         raise NotImplementedError("Embeddings not supported by Anthropic provider")

@@ -13,7 +13,7 @@ class CallbackHandler:
 
     async def handle_settings(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /settings command."""
-        from ...config import get_settings
+        from tg_bookmark.config import get_settings
 
         settings = get_settings()
 
